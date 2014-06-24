@@ -4,5 +4,10 @@ It is assumed that the x-BIMU is configured to send sensor data at 256 Hz, no qu
 Uses jssc to connect the bluetooth, source included.
 Uses jogl (http://jogamp.org/jogl/www/) which depends on gluegen. Create a folder jarLib, and copy .jars to that folder (I downloaded 	jogamp-all-platforms.7z	from http://jogamp.org/deployment/jogamp-current/archive/ and copied jars from jogamp-all-platforms/jar)
 Uses a port of Seb Madgwick's gradient descent algorithm ported from the C code (http://www.x-io.co.uk/open-source-imu-and-ahrs-algorithms/) to estimate the IMU orientation
+The Quaternion.java was copied from http://introcs.cs.princeton.edu/java/32class/Quaternion.java.html, and subsequently modified
 
-Pair x-BIMU with bluetooth, take a note of the com port. Select the com port from the drop down menu -> Connect Bluetooth. Once connected, it is possible to save the data to file -> Begin sampling. Look into deakin/timo/capture/CaptureXBIMU.java for the file format.
+Compile (look into build.xml, if the ant build script does not work):
+ant
+
+Use:
+Pair x-BIMU with bluetooth (whichever way it is done in your operating system, the code only works in Windows as is) take a note of the com port. Select the com port from the drop down menu -> Connect Bluetooth, the program should start showing real-time data. Once connected, it is possible to save the data to file -> Begin sampling. Look into deakin/timo/capture/CaptureXBIMU.java for the file format.
