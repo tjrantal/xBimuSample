@@ -15,10 +15,10 @@ public class MadgwickAHRSIMU extends MadgwickAHRS{
 	public MadgwickAHRSIMU(double beta, double[] q, double samplingFreq){
 		super(beta,q,samplingFreq);
 	}
-	
+
 	/**
 		Update the orientation according to the latest set of IMU measurements
-		@param AHRSdata The latest set of IMU or MARG data [0-2] gyro, [3-5] accelerometer
+		@param AHRSdata The latest set of IMU data [0-2] gyro, [3-5] accelerometer
 	*/
 	@Override
 	public void  AHRSUpdate(double[] AHRSdata){
@@ -29,7 +29,7 @@ public class MadgwickAHRSIMU extends MadgwickAHRS{
 		double[] _4q	= new double[3];
 		double[] _8q	= new double[2];
 		double[] qq		= new double[4];
-		
+
 		// Rate of change of quaternion from gyroscope
 		qDot[0] = 0.5d * (-q[1] * AHRSdata[0] - q[2] * AHRSdata[1] - q[3] * AHRSdata[2]);
 		qDot[1] = 0.5d * (q[0] * AHRSdata[0] + q[2] * AHRSdata[2] - q[3] * AHRSdata[1]);
@@ -43,7 +43,7 @@ public class MadgwickAHRSIMU extends MadgwickAHRS{
 			recipNorm	= invSqrt(AHRSdata[3] * AHRSdata[3] + AHRSdata[4] * AHRSdata[4] + AHRSdata[5] * AHRSdata[5]);
 			AHRSdata[3]	*= recipNorm;
 			AHRSdata[4]	*= recipNorm;
-			AHRSdata[5]	*= recipNorm;   
+			AHRSdata[5]	*= recipNorm;
 
 			// Auxiliary variables to avoid repeated arithmetic
 			_2q[0] = 2d * q[0];
@@ -89,6 +89,6 @@ public class MadgwickAHRSIMU extends MadgwickAHRS{
 		q[0] *= recipNorm;
 		q[1] *= recipNorm;
 		q[2] *= recipNorm;
-		q[3] *= recipNorm;	
+		q[3] *= recipNorm;
 	}
 }
