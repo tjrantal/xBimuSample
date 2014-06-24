@@ -1,0 +1,43 @@
+<!-- xBimuSample ANT build system -->
+
+<project name="xBimuSample" default="jar" basedir=".">
+  <description>
+    Ant build system for xBimuSample
+  </description>
+
+  <!-- set global properties for this build -->
+  <property environment="env"/>
+  <property name="JAVA_HOME" location="${env.JAVA_HOME}" />
+  <property name="javasrc" location="src/" />
+  <!--property name="lib" location="lib" /-->
+  <property name="jarLib" location="jarLib" />
+  <property name="build" location="build" />
+  <property name="classes" location="build/java" />
+
+  <!-- Initialize -->
+  <target name="javacompile" description="Compile Java source" >
+	<mkdir dir="${classes}"/>
+	<javac source="1.5" srcdir="${javasrc}" destdir="${classes}" nowarn="on">
+		<!--Include classpath & jars here-->
+		<classpath>
+			<pathelement path="${classes}"/> 
+			<!--pathelement path="${lib}"/--> 
+			<fileset dir="${jarLib}">  
+				<include name="**/*.jar" />  
+			</fileset> 
+		</classpath>
+	</javac>
+  </target>
+  
+	<target name="jar" depends="javacompile" description="Create Jar file" >
+		<!--mkdir dir="${classes}/${lib}"/-->
+		<!--copy todir="${classes}/lib">
+			<fileset dir="${lib}"/>
+		</copy-->
+		<copy todir="${build}/jarLib">
+			<fileset dir="${jarLib}"/>
+		</copy>
+		<jar jarfile="${build}/xBimuSample.jar" basedir="${classes}" manifest="manifest/manifest.mf"/>
+	</target>
+  
+</project>

@@ -1,0 +1,8 @@
+Java program to capture x-BIMU data.
+It is assumed that the x-BIMU is configured to send sensor data at 256 Hz, no quaternion data, and battery data at 1 Hz.
+
+Uses jssc to connect the bluetooth, source included.
+Uses jogl (http://jogamp.org/jogl/www/) which depends on gluegen. Create a folder jarLib, and copy .jars to that folder (I downloaded 	jogamp-all-platforms.7z	from http://jogamp.org/deployment/jogamp-current/archive/ and copied jars from jogamp-all-platforms/jar)
+Uses a port of Seb Madgwick's gradient descent algorithm ported from the C code (http://www.x-io.co.uk/open-source-imu-and-ahrs-algorithms/) to estimate the IMU orientation
+
+Pair x-BIMU with bluetooth, take a note of the com port. Select the com port from the drop down menu -> Connect Bluetooth. Once connected, it is possible to save the data to file -> Begin sampling. Look into deakin/timo/capture/CaptureXBIMU.java for the file format.
