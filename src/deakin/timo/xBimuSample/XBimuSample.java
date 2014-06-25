@@ -41,6 +41,15 @@ import deakin.timo.visualizeAxes.*;			/*Visualize axes jogl*/
 
 public class XBimuSample extends JPanel implements ActionListener, WindowListener{
 	private JComboBox[] comPortDropDownMenu;
+	private JComboBox[] magnetometerCoeffsDrop;
+	String[] xBimuNames = {"E265","F086","E46B"};
+	double[][][] xBimuMagCoeffs =  {
+									{{-0.34264, 0.13706},{18.05886,0.13945},{0.84505,0.15365}},	/*E265*/
+									{{-1.88865, 0.13490},{22.70212,0.13928},{-0.95199,0.15866}},	/*F086*/
+									{{23.44847, 0.14211},{27.38312,0.14450},{-5.99249,0.15980}}		/*E46B*/
+									};
+
+	double[][] magCoeffs;
 	public JButton chooseSaveFile;			/*For saving the results to a file*/
 	private JFileChooser fileChooser;		/*Selecting the file to save to*/
 	private Preferences preferences;		/**Saving the default file path*/
@@ -126,13 +135,14 @@ public class XBimuSample extends JPanel implements ActionListener, WindowListene
 		buttons[0].add(endSampling);
 
 		/*buttons[0] ID: idArea beginSampling endSampling*/
-
+		magCoeffs = xBimuMagCoeffs[1];
 		/*Add dropbox list of com ports*/
-		comPortDropDownMenu = new JComboBox[1];
-		connectBluetooth	= new JButton[1];
-		closeBluetooth		= new JButton[1];
-		String[] comPorts = SerialPortList.getPortNames();	//List com ports
-		String[] portLabel = new String[]{"xBIMU com port selection"};
+		comPortDropDownMenu		= new JComboBox[1];
+		magnetometerCoeffsDrop	= new JComboBox[1];
+		connectBluetooth			= new JButton[1];
+		closeBluetooth				= new JButton[1];
+		String[] comPorts			= SerialPortList.getPortNames();	//List com ports
+		String[] portLabel			= new String[]{"xBIMU com port selection"};
 		for (int c = 0; c<comPortDropDownMenu.length;++c){
 			buttons[c+1].add(new JLabel(portLabel[c]));
 
@@ -143,6 +153,16 @@ public class XBimuSample extends JPanel implements ActionListener, WindowListene
 			comPortDropDownMenu[c].addActionListener(this);
 			comPortDropDownMenu[c].setActionCommand("comPortDropDownMenu"+c);
 			buttons[c+1].add(comPortDropDownMenu[c]);
+
+			/*Magnetometer coefficients drop down*/
+
+			magnetometerCoeffsDrop[c] = new JComboBox();
+			for(int i = 0; i < xBimuNames.length; ++i){
+				magnetometerCoeffsDrop[c].addItem(xBimuNames[i]);
+			}
+			magnetometerCoeffsDrop[c].addActionListener(this);
+			magnetometerCoeffsDrop[c].setActionCommand("magnetometerCoeffsDrop"+c);
+			buttons[c+1].add(magnetometerCoeffsDrop[c]);
 
 			/*Connect button*/
 			connectBluetooth[c]= new JButton("Connect Bluetooth");
@@ -191,7 +211,7 @@ public class XBimuSample extends JPanel implements ActionListener, WindowListene
 		 }
 
 		/*Add 3D orientation images*/
-		orientationWindow = new VisualizeAxes[1];
+		orientationWindow = new VisualizeAxes[2];
 		int tempCount = 0;
 
 		for (int i = 0; i< dims.length; ++i){
@@ -200,10 +220,12 @@ public class XBimuSample extends JPanel implements ActionListener, WindowListene
 			add(drawImages[i]);
 			drawImages[i].paintImageToDraw();
 			if (i == 3 ){
-				orientationWindow[tempCount] = new VisualizeAxes(imWidth*2/3,imHeight/2);
-				orientationWindow[tempCount].setOpaque(true);
-				add(orientationWindow[tempCount]);
-				++tempCount;
+			   	for (int j = 0; j<2;++j){
+					orientationWindow[tempCount] = new VisualizeAxes(imWidth*1/3,imHeight/2);
+					orientationWindow[tempCount].setOpaque(true);
+					add(orientationWindow[tempCount]);
+					++tempCount;
+			   	}
 			}
 
 		}
@@ -272,6 +294,12 @@ public class XBimuSample extends JPanel implements ActionListener, WindowListene
 			portToConnectTo[0] = (String) ((JComboBox)e.getSource()).getSelectedItem();
 			connectBluetooth[0].setEnabled(true);
 		}
+
+		/**Select magnetometer calibration*/
+		if ("magnetometerCoeffsDrop0".equals(e.getActionCommand())){
+			magCoeffs = xBimuMagCoeffs[((JComboBox)e.getSource()).getSelectedIndex()];
+		}
+
 
 		/**Connect bluetooth*/
 		if ("connectBluetooth0".equals(e.getActionCommand())){
@@ -389,7 +417,7 @@ public class XBimuSample extends JPanel implements ActionListener, WindowListene
 	private void doBeginSampling0(){
 			if (serialPort[0] != null){
 				/*Start a thread for capturing*/
-				capture[0] = new CaptureXBIMU(this,serialPort[0],oStream[0],drawImages[0],drawImages[1],drawImages[2],drawImages[3],orientationWindow[0]);
+				capture[0] = new CaptureXBIMU(this,serialPort[0],oStream[0],drawImages[0],drawImages[1],drawImages[2],drawImages[3],orientationWindow[0],orientationWindow[1],magCoeffs);
 				captureThread[0] = new Thread(capture[0],"captureThread");
 				captureThread[0].start();
 				System.out.println("Thread started");

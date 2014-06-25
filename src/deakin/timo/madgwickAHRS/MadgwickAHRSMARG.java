@@ -32,6 +32,12 @@ public class MadgwickAHRSMARG extends MadgwickAHRS{
 		double[] _2q	= new double[6];
 		double[] qq		= new double[10];
 
+		/**Compute orientation based on IMU only, if magnetometer measurement results in NaN*/
+		if ((AHRSdata[6] == 0d) && (AHRSdata[7] == 0d) && (AHRSdata[8] == 0d)) {
+		 	AHRSUpdateIMU(AHRSdata);
+		 	return;
+		}
+
 		// Rate of change of quaternion from gyroscope
 		qDot[0] = 0.5d * (-q[1] * AHRSdata[0] - q[2] * AHRSdata[1] - q[3] * AHRSdata[2]);
 		qDot[1] = 0.5d * (q[0] * AHRSdata[0] + q[2] * AHRSdata[2] - q[3] * AHRSdata[1]);
@@ -78,7 +84,15 @@ public class MadgwickAHRSMARG extends MadgwickAHRS{
 			qq[9] = q[3] * q[3];
 
 			// Reference direction of Earth's magnetic field
-			// Gradient decent algorithm corrective step
+			h[0] = AHRSdata[6] * qq[0] - _2qm[1] * q[3] + _2qm[2] * q[2] + AHRSdata[6] * qq[4] + _2q[1] * AHRSdata[7] * q[2] + _2q[1] * AHRSdata[8] * q[3] - AHRSdata[6] * qq[7] - AHRSdata[6] * qq[9];
+			h[1] = _2qm[0] * q[3] + AHRSdata[7] * qq[0] - _2qm[2] * q[1] + _2qm[3] * q[2] - AHRSdata[7] * qq[4] + AHRSdata[7] * qq[7] + _2q[2] * AHRSdata[8] * q[3] - AHRSdata[7] * qq[9];
+			_2b[0] = Math.sqrt(h[0] * h[0] + h[1] * h[1]);
+			_2b[1] = -_2qm[0] * q[2] + _2qm[1] * q[1] + AHRSdata[8] * qq[0] + _2qm[3] * q[3] - AHRSdata[8] * qq[4] + _2q[2] * AHRSdata[7] * q[3] - AHRSdata[8] * qq[7] + AHRSdata[8] * qq[9];
+			_4b[0] = 2d * _2b[0];
+			_4b[1] = 2d * _2b[1];
+
+
+			// Gradient descent algorithm corrective step
 			s[0] = -_2q[2] * (2.0f * qq[6] - _2q[4] - AHRSdata[3]) + _2q[1] * (2.0f * qq[1] + _2q[5] - AHRSdata[4]) - _2b[1] * q[2] * (_2b[0] * (0.5f - qq[7] - qq[9]) + _2b[1] * (qq[6] - qq[2]) - AHRSdata[6]) + (-_2b[0] * q[3] + _2b[1] * q[1]) * (_2b[0] * (qq[5] - qq[3]) + _2b[1] * (qq[1] + qq[8]) - AHRSdata[7]) + _2b[0] * q[2] * (_2b[0] * (qq[2] + qq[6]) + _2b[1] * (0.5f - qq[4] - qq[7]) - AHRSdata[8]);
 			s[1] = _2q[3] * (2.0f * qq[6] - _2q[4] - AHRSdata[3]) + _2q[0] * (2.0f * qq[1] + _2q[5] - AHRSdata[4]) - 4.0f * q[1] * (1 - 2.0f * qq[4] - 2.0f * qq[7] - AHRSdata[5]) + _2b[1] * q[3] * (_2b[0] * (0.5f - qq[7] - qq[9]) + _2b[1] * (qq[6] - qq[2]) - AHRSdata[6]) + (_2b[0] * q[2] + _2b[1] * q[0]) * (_2b[0] * (qq[5] - qq[3]) + _2b[1] * (qq[1] + qq[8]) - AHRSdata[7]) + (_2b[0] * q[3] - _4b[1] * q[1]) * (_2b[0] * (qq[2] + qq[6]) + _2b[1] * (0.5f - qq[4] - qq[7]) - AHRSdata[8]);
 			s[2] = -_2q[0] * (2.0f * qq[6] - _2q[4] - AHRSdata[3]) + _2q[3] * (2.0f * qq[1] + _2q[5] - AHRSdata[4]) - 4.0f * q[2] * (1 - 2.0f * qq[4] - 2.0f * qq[7] - AHRSdata[5]) + (-_4b[0] * q[2] - _2b[1] * q[0]) * (_2b[0] * (0.5f - qq[7] - qq[9]) + _2b[1] * (qq[6] - qq[2]) - AHRSdata[6]) + (_2b[0] * q[1] + _2b[1] * q[3]) * (_2b[0] * (qq[5] - qq[3]) + _2b[1] * (qq[1] + qq[8]) - AHRSdata[7]) + (_2b[0] * q[0] - _4b[1] * q[2]) * (_2b[0] * (qq[2] + qq[6]) + _2b[1] * (0.5f - qq[4] - qq[7]) - AHRSdata[8]);
@@ -112,4 +126,79 @@ public class MadgwickAHRSMARG extends MadgwickAHRS{
 		q[2] *= recipNorm;
 		q[3] *= recipNorm;
 	}
+
+	/**Update orientation based on just IMU data.
+		For when magnetometer data would've resulted in NaN
+	*/
+	private void  AHRSUpdateIMU(double[] AHRSdata){
+		double recipNorm;
+		double[] s		= new double[4];
+		double[] qDot	= new double[4];
+		double[] _2q	= new double[4];
+		double[] _4q	= new double[3];
+		double[] _8q	= new double[2];
+		double[] qq		= new double[4];
+
+		// Rate of change of quaternion from gyroscope
+		qDot[0] = 0.5d * (-q[1] * AHRSdata[0] - q[2] * AHRSdata[1] - q[3] * AHRSdata[2]);
+		qDot[1] = 0.5d * (q[0] * AHRSdata[0] + q[2] * AHRSdata[2] - q[3] * AHRSdata[1]);
+		qDot[2] = 0.5d * (q[0] * AHRSdata[1] - q[1] * AHRSdata[2] + q[3] * AHRSdata[0]);
+		qDot[3] = 0.5d * (q[0] * AHRSdata[2] + q[1] * AHRSdata[1] - q[2] * AHRSdata[0]);
+
+		// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
+		if(!((AHRSdata[3] == 0d) && (AHRSdata[4] == 0d) && (AHRSdata[5] == 0d))) {
+
+			// Normalise accelerometer measurement
+			recipNorm	= invSqrt(AHRSdata[3] * AHRSdata[3] + AHRSdata[4] * AHRSdata[4] + AHRSdata[5] * AHRSdata[5]);
+			AHRSdata[3]	*= recipNorm;
+			AHRSdata[4]	*= recipNorm;
+			AHRSdata[5]	*= recipNorm;
+
+			// Auxiliary variables to avoid repeated arithmetic
+			_2q[0] = 2d * q[0];
+			_2q[1] = 2d * q[1];
+			_2q[2] = 2d * q[2];
+			_2q[3] = 2d * q[3];
+			_4q[0] = 4d * q[0];
+			_4q[1] = 4d * q[1];
+			_4q[2] = 4d * q[2];
+			_8q[0] = 8d * q[1];
+			_8q[1] = 8d * q[2];
+			qq[0] = q[0] * q[0];
+			qq[1] = q[1] * q[1];
+			qq[2] = q[2] * q[2];
+			qq[3] = q[3] * q[3];
+
+			// Gradient decent algorithm corrective step
+			s[0] = _4q[0] * qq[2] + _2q[2] * AHRSdata[3] + _4q[0] * qq[1] - _2q[1] * AHRSdata[4];
+			s[1] = _4q[1] * qq[3] - _2q[3] * AHRSdata[3] + 4.0f * qq[0] * q[1] - _2q[0] * AHRSdata[4] - _4q[1] + _8q[0] * qq[1] + _8q[0] * qq[2] + _4q[1] * AHRSdata[5];
+			s[2] = 4.0f * qq[0] * q[2] + _2q[0] * AHRSdata[3] + _4q[2] * qq[3] - _2q[3] * AHRSdata[4] - _4q[2] + _8q[1] * qq[1] + _8q[1] * qq[2] + _4q[2] * AHRSdata[5];
+			s[3] = 4.0f * qq[1] * q[3] - _2q[1] * AHRSdata[3] + 4.0f * qq[2] * q[3] - _2q[2] * AHRSdata[4];
+			recipNorm = invSqrt(s[0] * s[0] + s[1] * s[1] + s[2] * s[2] + s[3] * s[3]); // normalise step magnitude
+			s[0] *= recipNorm;
+			s[1] *= recipNorm;
+			s[2] *= recipNorm;
+			s[3] *= recipNorm;
+
+			// Apply feedback step
+			qDot[0] -= beta * s[0];
+			qDot[1] -= beta * s[1];
+			qDot[2] -= beta * s[2];
+			qDot[3] -= beta * s[3];
+		}
+
+		// Integrate rate of change of quaternion to yield quaternion
+		q[0] += qDot[0] * (1.0f / samplingFreq);
+		q[1] += qDot[1] * (1.0f / samplingFreq);
+		q[2] += qDot[2] * (1.0f / samplingFreq);
+		q[3] += qDot[3] * (1.0f / samplingFreq);
+
+		// Normalise quaternion
+		recipNorm = invSqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+		q[0] *= recipNorm;
+		q[1] *= recipNorm;
+		q[2] *= recipNorm;
+		q[3] *= recipNorm;
+	}
+
 }

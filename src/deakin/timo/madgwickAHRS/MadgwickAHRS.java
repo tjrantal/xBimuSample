@@ -16,7 +16,10 @@ public abstract class MadgwickAHRS{
 	*/
 	public MadgwickAHRS(double beta, double[] q, double samplingFreq){
 		this.beta = beta;
-		this.q = q;
+		this.q = new double[q.length];
+		for (int i = 0; i<q.length;++i){
+			this.q[i] = q[i];
+		}
 		this.samplingFreq = samplingFreq;
 	}
 
@@ -27,8 +30,8 @@ public abstract class MadgwickAHRS{
 	public void setOrientationQuaternion(double[] q){
 		this.q = q;
 	}
-	
-	
+
+
 	/**
 		Return the current orientation quaterion
 	*/
@@ -39,18 +42,18 @@ public abstract class MadgwickAHRS{
 		}
 		return returnQ;
 	}
-	
+
 	/**
 		Update the orientation according to the latest set of measurements
 		@param AHRSdata The latest set of IMU or MARG data [0-2] gyro, [3-5] accelerometer, {[6-8] magnetometer}
 	*/
-	public abstract void  AHRSUpdate(double[] AHRSdata);	
-	
+	public abstract void  AHRSUpdate(double[] AHRSdata);
+
 	/**
 		Replaced Madgwick's sqrt(1/x) implementation with 1/Math.sqrt(x) since I don't need real time calculations, and due to the instability pointed out by Tobias Simon
 		http://www.diydrones.com/forum/topics/madgwick-imu-ahrs-and-fast-inverse-square-root
 		@param x the value for inverse square
-	*/	
+	*/
 	public double invSqrt(double x){
 		return 1/Math.sqrt(x);
 	}
@@ -59,11 +62,11 @@ public abstract class MadgwickAHRS{
 		sqrt(1/x) implementation pointed out by Tobias Simon, in case a more computationally efficient method is required
 		http://www.diydrones.com/forum/topics/madgwick-imu-ahrs-and-fast-inverse-square-root
 		@param x the value for inverse square
-	*/	
+	*/
 	public static float invSqrt(float x){
 		int i = 0x5F1F1412 - (Float.floatToIntBits(x) >> 1);
 		float tmp = Float.intBitsToFloat(i);
 		return tmp * (1.69000231f - 0.714158168f * x * tmp * tmp);
 	}
-	
+
 }

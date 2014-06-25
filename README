@@ -1,5 +1,5 @@
 Java program to capture x-BIMU data.
-It is assumed that the x-BIMU is configured to send sensor data at 256 Hz, no quaternion data, and battery data at 1 Hz.
+It is assumed that the x-BIMU is configured to send sensor data at 256 Hz, no quaternion data, and battery data at 1 Hz. Magnetometer calibration varies between units, and I've hardcoded the calibrations for the three x-BIMUs I have. The orientation based on MARG data will therefore almost certainly be out of whack for other x-BIMUs.
 
 Uses jssc to connect the bluetooth, source included.
 Uses jogl (http://jogamp.org/jogl/www/) which depends on gluegen. Create a folder jarLib, and copy .jars to that folder (I downloaded 	jogamp-all-platforms.7z	from http://jogamp.org/deployment/jogamp-current/archive/ and copied jars from jogamp-all-platforms/jar)

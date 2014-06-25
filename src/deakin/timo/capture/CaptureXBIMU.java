@@ -45,25 +45,32 @@ public class CaptureXBIMU extends Capture{
 	DrawImage drawImage3;
 	DrawImage drawImage4;
 	VisualizeAxes orientationWindow;
+	VisualizeAxes orientationWindow2;
 	private Quaternion quat = null;
+	private Quaternion quat2 = null;
 	double[] Z = {0d,0d,1d};
 	Quaternion zAxis = null;
 	private MadgwickAHRS madgwickAHRS = null;
+	private MadgwickAHRS madgwickAHRS2 = null;
 	private double sFreq = 256;		/**Set this with the x-BIMU software*/
 	DecimalFormat dfo;
+	private double[][] coeff;			/**For magnetometer calibration coefficients*/
 
 	/*Constructor*/
-	public CaptureXBIMU(XBimuSample mainProgram,SerialPort serialPort,BufferedOutputStream oStream, DrawImage drawImage1, DrawImage drawImage2,DrawImage drawImage3,DrawImage drawImage4,VisualizeAxes orientationWindow){
+	public CaptureXBIMU(XBimuSample mainProgram,SerialPort serialPort,BufferedOutputStream oStream, DrawImage drawImage1, DrawImage drawImage2,DrawImage drawImage3,DrawImage drawImage4,VisualizeAxes orientationWindow,VisualizeAxes orientationWindow2, double[][] coeff){
 		super(mainProgram,serialPort,oStream,drawImage1,drawImage2);
 		this.drawImage3 = drawImage3;
 		this.drawImage4 = drawImage4;
 		this.orientationWindow = orientationWindow;
+		this.orientationWindow2 = orientationWindow2;
+		this.coeff = coeff;
 		noChannels = 9;
 		setChannels(noChannels);
 		valuesIn = new short[noChannels];
 		batteryIn = new short[1];
 		zAxis = new Quaternion(0,Z[0],Z[1],Z[2]);
-		madgwickAHRS = new MadgwickAHRSIMU(0.1d, new double[]{1,0,0,0}, sFreq);
+		madgwickAHRS = new MadgwickAHRSIMU(0.041d, new double[]{1,0,0,0}, sFreq);								/*Beta taken from Madgwick et al. 2011*/
+		madgwickAHRS2 = new MadgwickAHRSMARG(0.033d, new double[]{1,0,0,0}, sFreq);		/*Beta taken from Madgwick et al. 2011*/
 		dfo = new DecimalFormat("0.0");
 	}
 
@@ -296,7 +303,8 @@ public class CaptureXBIMU extends Capture{
 			String[] tempVals = new String[3];
 			for (int i = 6; i< 9; ++i){
 			   drawImage3.plotTrace(data.get(i).toArray(new Integer[]{}),i-6);
-			   tempVals[i-6] = dfo.format((data.get(i)).get((data.get(i)).size()-1));
+			   tempVals[i-6] = dfo.format((data.get(i)).get((data.get(i)).size()-1)*coeff[i-6][1]+coeff[i-6][0]);
+			   //tempVals[i-6] = dfo.format((data.get(i)).get((data.get(i)).size()-1));
 			}
 			drawImage1.plotString(new String("Gyro"));
 			drawImage2.plotString(new String("Accelerometer"));
@@ -317,13 +325,16 @@ public class CaptureXBIMU extends Capture{
 		//constants.channelOrder = [4,5,6,1,2,3];
 		//constants.scalings = [1/1000 1/1000 1/1000 1/(10*180)*pi 1/(10*180)*pi 1/(10*180)*pi];
 		/*Scale the values*/
-		double[] imuData = new double[6];
+		double[] imuData = new double[9];
 		imuData[0] = ((double)valuesIn[3])/1000d;
 		imuData[1] = ((double)valuesIn[4])/1000d;
 		imuData[2] = ((double)valuesIn[5])/1000d;
 		imuData[3] = ((double)valuesIn[0])/(10d*180d)*Math.PI;
 		imuData[4] = ((double)valuesIn[1])/(10d*180d)*Math.PI;
 		imuData[5] = ((double)valuesIn[2])/(10d*180d)*Math.PI;
+		imuData[6] = ((double)valuesIn[6])*coeff[0][1]+coeff[0][0];
+		imuData[7] = ((double)valuesIn[7])*coeff[1][1]+coeff[1][0];
+		imuData[8] = ((double)valuesIn[8])*coeff[2][1]+coeff[2][0];
 
 		double initTheta;
 		double[] rotAxis;
@@ -339,19 +350,32 @@ public class CaptureXBIMU extends Capture{
 				quat = new Quaternion(Math.cos(initTheta/2d),Math.sin(initTheta/2d)*rotAxis[0],Math.sin(initTheta/2d)*rotAxis[1],Math.sin(initTheta/2d)*rotAxis[2]);
 			}else{
 				quat = new Quaternion(1d,0d,0d,0d);
-				quat = quat.conjugate();		/**The conjugate is used in visualization*/
 			}
+			/**calculate rotation around vertical axis according to the magnetometer*/
+			Quaternion rotatedMag = (quat.times(new Quaternion(normalize(new double[]{0d,imuData[6],imuData[7],imuData[8]})))).times(quat.conjugate());
+			double magTheta = Math.atan2(rotatedMag.x2,rotatedMag.x1);
+			double[] magRotAx = {0d,0d,-1d};
+			Quaternion magQuat = new Quaternion(Math.cos(magTheta/2d),Math.sin(magTheta/2d)*magRotAx[0],Math.sin(magTheta/2d)*magRotAx[1],Math.sin(magTheta/2d)*magRotAx[2]);
+			quat2 = magQuat.times(quat);
 			madgwickAHRS.setOrientationQuaternion(quat.getDouble());
-
+			madgwickAHRS2.setOrientationQuaternion(quat2.getDouble());
+			quat = quat.conjugate();		/**The conjugate is used in visualization*/
+			quat2= quat2.conjugate();		/**The conjugate is used in visualization*/
 		}else{
 			/**Update the orientation with madgwick gradient descent algorithm*/
 			madgwickAHRS.AHRSUpdate(new double[] {imuData[3],imuData[4],imuData[5],imuData[0],imuData[1],imuData[2]});
 			double[] tempQ = madgwickAHRS.getOrientationQuaternion();
 			quat = new Quaternion(tempQ[0],-tempQ[1],-tempQ[2],-tempQ[3]);	/**Return the conjugate, because that's what's used in the visualization*/
+			madgwickAHRS2.AHRSUpdate(new double[] {imuData[3],imuData[4],imuData[5],imuData[0],imuData[1],imuData[2],imuData[6],imuData[7],imuData[8]});
+			tempQ = madgwickAHRS2.getOrientationQuaternion();
+			quat2 = new Quaternion(tempQ[0],-tempQ[1],-tempQ[2],-tempQ[3]);	/**Return the conjugate, because that's what's used in the visualization*/
 		}
 
 		if (quat != null){
 			orientationWindow.setRotationQuaternion(quat.getFloat());
+		}
+		if (quat2 != null){
+			orientationWindow2.setRotationQuaternion(quat2.getFloat());
 		}
 	}
 
